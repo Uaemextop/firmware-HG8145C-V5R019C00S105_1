@@ -1,0 +1,133 @@
+#! /bin/sh
+
+umask 0022
+
+PATH=/bin:/bin/exbin:/sbin:/usr/bin:/usr/sbin:/usr/local/sbin:/usr/local/bin:/usr/local/sbin:/usr/osgi/bin:/var/osgi_app/osgi/bin:/var/felix-temp/samba/samba_file/bin:/var/felix-temp/dlna/dlna/bin
+export LD_LIBRARY_PATH=/lib:/lib/exlib:/lib/omci_module:/lib/oam_module:/usr/osgi/lib:/var/osgi_app/osgi/lib:/usr/osgi/lib/aarch32:/var/osgi_app/osgi/lib/aarch32:/usr/osgi/lib/aarch32/jli:/var/osgi_app/osgi/lib/aarch32/jli:/usr/osgi/lib/aarch32/server:/var/osgi_app/osgi/lib/aarch32/server:/var/felix-temp/dlna/dlna/lib
+
+export LANG=zh_CN.UTF-8
+export LC_ALL=zh_CN.UTF-8
+
+[ -f /var/sys_start_flag ] && echo "the ont has already been started!" && exit
+
+#insmod the watchdog ko
+[ -f /lib/modules/linux/extra/arch/arm/mach-hisi/hi_drv_wdt.ko ] && insmod /lib/modules/linux/extra/arch/arm/mach-hisi/hi_drv_wdt.ko
+
+   echo "mount file system"
+ 
+   #mount -a 默认目录权限为755，文件权限为750
+   #chmod 750 /proc
+   mkdir /dev/pts
+   mkdir /dev/shm
+   mount -t devpts -o mode=620 devpts /dev/pts
+   mount -t tmpfs -o nodev,nosuid,size=512m,mode=755 tmpfs /dev/shm
+   mount -t tmpfs -o nodev,nosuid,size=10m,mode=755 none /tmp
+   mount -t tmpfs -o nodev,nosuid,size=512m,mode=755 none /var
+   mount -t tmpfs -o nodev,size=4k,mode=755 none /mnt
+
+    cp /etc/wap/passwd /var/ -rf
+    chmod 700 /var/passwd
+    cp /etc/wap/group /var/ -rf
+    chmod 700 /var/group
+
+    mkdir /mnt/jffs2
+    mkdir /mnt/nfs
+
+    mkdir /var/osgi
+    mkdir /var/web
+    mkdir /var/cli
+    mkdir /var/service
+    mkdir /var/config
+
+    # 配置用户目录 
+    mkdir /var/srv_usb; chown srv_usb:service /var/srv_usb 
+    mkdir /var/srv_samba; chown srv_samba:service /var/srv_samba 
+    mkdir /var/srv_amp; chown srv_amp:service /var/srv_amp 
+    mkdir /var/srv_web; chown srv_web:service /var/srv_web 
+    mkdir /var/osgi_proxy; chown osgi_proxy:osgi /var/osgi_proxy 
+    mkdir /var/srv_igmp; chown srv_igmp:service /var/srv_igmp 
+    mkdir /var/cfg_cwmp; chown cfg_cwmp:config /var/cfg_cwmp 
+    mkdir /var/srv_ssmp; chown srv_ssmp:service /var/srv_ssmp 
+    mkdir /var/cfg_omci; chown cfg_omci:config /var/cfg_omci 
+    mkdir /var/cfg_cli; chown cfg_cli:config /var/cfg_cli 
+    mkdir /var/cfg_oam; chown cfg_oam:config /var/cfg_oam 
+    mkdir /var/srv_bbsp; chown srv_bbsp:service /var/srv_bbsp 
+    mkdir /var/srv_ethoam; chown srv_ethoam:service /var/srv_ethoam 
+    mkdir /var/srv_dbus; chown srv_dbus:service /var/srv_dbus 
+    mkdir /var/srv_wifi; chown srv_wifi:service /var/srv_wifi 
+    mkdir /var/tool_mu; chown tool_mu:tools /var/tool_mu 
+    mkdir /var/srv_snmp; chown srv_snmp:service /var/srv_snmp 
+    mkdir /var/srv_apm; chown srv_apm:service /var/srv_apm 
+    mkdir /var/tool_iac; chown tool_iac:tools /var/tool_iac
+    # 产品
+    mkdir /var/srv_ldsp; chown srv_ldsp:service /var/srv_ldsp
+    mkdir /var/srv_voice; chown srv_voice:service /var/srv_voice
+    mkdir /var/srv_appm; chown srv_appm:service /var/srv_appm
+    chown osgi_proxy:osgi /var/osgi
+   
+    mount -t tmpfs -o nodev,nosuid,size=16m,mode=755 none /var/osgi
+   
+    mkdir /var/felix-temp
+    mount -t tmpfs -o nodev,nosuid,size=30m,mode=755 none /var/felix-temp
+   
+    mkdir /var/cplugin
+    chmod 770 /var/cplugin
+   
+    mkdir /tmp/QoE
+    mount -t tmpfs -o nodev,nosuid,size=2m,mode=755 none /tmp/QoE
+	
+	
+	touch /var/sys_start_flag 
+	
+
+    echo "Loading the kernel modules: "
+
+    cat /etc/modules | sed -e '/^[ \t]*$/d' |
+    while read module
+    do
+       echo "Loading module: $module"
+       modprobe $module
+    done
+								    
+# Setting the console Log status mode
+	if [ -w /proc/sys/kernel/printk ]
+	then
+        	echo "Setting console log message level: "
+	        echo "1 4 1 7" > /proc/sys/kernel/printk
+	        echo 3 > /proc/sys/kernel/printk_ratelimit_burst
+	fi
+
+# Setting up initial hostname
+	echo "create /var/hostname: "
+	touch /var/HOSTNAME
+	echo "Setting hostname: "
+	hostname -F /etc/HOSTNAME
+	
+	
+# Setting up the sysctl confgiruaton options	
+	echo "Settingup the sysctl configurations:"
+	sysctl -p /etc/sysctl.conf > /dev/null
+
+# Setting up localhost loopback interface
+	echo "Setting up interface lo: "
+	ifconfig lo up 127.0.0.1
+
+
+
+# Redirect stdout/stderr to pipe, for common all version one key collection
+collect_pipe &
+
+# Running local startup scripts
+	echo "Running local startup scripts."
+	for i in `ls /etc/rc.d/rc.start/*` ; do
+	        if [ -x $i ]; then
+			$i start
+	        fi
+	done
+
+# Calling user defined scripts if any	
+	if [ -x /etc/rc.d/rc.local ]; then
+	        /etc/rc.d/rc.local
+	fi
+	
+	

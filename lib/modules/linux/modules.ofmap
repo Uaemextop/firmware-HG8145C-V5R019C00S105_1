@@ -1,0 +1,3 @@
+# of module          name                 type                 compatible
+8250_dw              *                    *                    snps,dw-apb-uart
+dw_mmc-pltfm         *                    *                    snps,dw-mshc

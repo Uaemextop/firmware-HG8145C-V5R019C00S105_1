@@ -1,0 +1,11 @@
+ipcp-accept-local
+ipcp-accept-remote
+refuse-eap
+noccp
+noauth
+nodefaultroute
+usepeerdns
+connect-delay 0
+hide-password
+noaccomp
+default-asyncmap
